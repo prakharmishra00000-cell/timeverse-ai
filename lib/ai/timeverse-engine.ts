@@ -51,6 +51,25 @@ async function callGemini(systemPrompt: string, userPrompt: string): Promise<str
 }
 
 /**
+ * Live Time Companion AI Chat with Gemini
+ */
+export async function chatWithTimeCompanion(
+  userQuery: string,
+  contextName: string,
+  contextType: string
+): Promise<string> {
+  const systemPrompt = `You are the TIMEVERSE AI Time Companion — an advanced, articulate, sci-fi temporal laboratory assistant.
+You are currently assisting a time traveler exploring the space: "${contextName}" (${contextType}).
+Provide concise, insightful, atmospheric answers (2-4 sentences max). Offer temporal vectors and causal insights.`;
+
+  const geminiText = await callGemini(systemPrompt, userQuery);
+  if (geminiText) return geminiText;
+
+  // Fallback
+  return `[Context: ${contextName}]\nAnalyzing temporal vectors for "${userQuery}"...\n\nBased on the causality matrix of ${contextName}, this shift alters local economic structures by ~34% and introduces a new branch node. Would you like to save this branch to your Universe profile?`;
+}
+
+/**
  * 1. Alternate Timeline Generator (Real Gemini API)
  */
 export async function generateAlternateTimelineBranch(
@@ -127,7 +146,7 @@ Return ONLY valid raw JSON with this exact structure (no markdown formatting cod
     }
   }
 
-  // Fallback Simulator Engine if API key is not present or returns unparseable result
+  // Fallback Simulator Engine
   await new Promise((resolve) => setTimeout(resolve, 800));
   return {
     id: `br_${Date.now()}`,

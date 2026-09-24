@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Bot, Send, Sparkles, X, Minimize2, Maximize2, Compass } from 'lucide-react';
+import { chatWithTimeCompanion } from '@/lib/ai/timeverse-engine';
 
 interface ContextualAIChatProps {
   currentContextName?: string;
@@ -16,6 +17,7 @@ export const ContextualAIChat: React.FC<ContextualAIChatProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
   const [messages, setMessages] = useState<Array<{ sender: 'ai' | 'user'; text: string; timestamp: string }>>([
     {
       sender: 'ai',
@@ -34,23 +36,28 @@ export const ContextualAIChat: React.FC<ContextualAIChatProps> = ({
     { label: 'Simulate', query: `Simulate the 50-year future projection for this space.` },
   ];
 
-  const handleSend = (queryText?: string) => {
+  const handleSend = async (queryText?: string) => {
     const textToSend = queryText || input;
-    if (!textToSend.trim()) return;
+    if (!textToSend.trim() || isThinking) return;
 
     const userMsg = { sender: 'user' as const, text: textToSend, timestamp: 'Now' };
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
+    setIsThinking(true);
 
-    // AI Response with Contextual Awareness
-    setTimeout(() => {
+    try {
+      const responseText = await chatWithTimeCompanion(textToSend, currentContextName, currentContextType);
       const aiResponse = {
         sender: 'ai' as const,
-        text: `[Context: ${currentContextName}]\nAnalyzing temporal vectors for "${textToSend}"...\n\nBased on the causality matrix of ${currentContextName}, this shift alters local economic structures by ~34% and introduces a new branch node. Would you like to save this branch to your Universe profile?`,
+        text: responseText,
         timestamp: 'Now',
       };
       setMessages((prev) => [...prev, aiResponse]);
-    }, 800);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsThinking(false);
+    }
   };
 
   if (!isOpen) {
@@ -131,6 +138,13 @@ export const ContextualAIChat: React.FC<ContextualAIChatProps> = ({
                 </div>
               </div>
             ))}
+            {isThinking && (
+              <div className="flex justify-start">
+                <div className="p-3 rounded-xl bg-space-900/90 border border-cyan-500/20 text-xs text-cyan-400 font-mono animate-pulse">
+                  Gemini AI analyzing temporal vectors...
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Quick Action Chips */}
