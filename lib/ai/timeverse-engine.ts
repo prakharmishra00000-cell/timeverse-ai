@@ -1,51 +1,41 @@
 import { TimelineBranch, FutureSimulation, ParallelLifeSimulation, ButterflyEffectChain, UniverseProfile } from '@/types/timeverse';
 
 /**
- * TIMEVERSE AI Engine — Real Gemini API Integration
- * Connects directly to Google Gemini API (gemini-1.5-flash / gemini-2.5-flash) with dynamic fallback.
+ * TIMEVERSE AI Engine — Real Gemini API Integration via Server Route
+ * Routes through /api/gemini to access process.env.GEMINI_API_KEY securely on Render/Vercel.
  */
 
-function getApiKey(): string | null {
+function getCustomKey(): string | null {
   if (typeof window !== 'undefined') {
     const userKey = localStorage.getItem('gemini_api_key');
     if (userKey && userKey.trim()) return userKey.trim();
   }
-  return process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || null;
+  return null;
 }
 
-async function callGemini(systemPrompt: string, userPrompt: string): Promise<string | null> {
-  const apiKey = getApiKey();
-  if (!apiKey) return null;
+async function callGeminiApi(systemPrompt: string, userPrompt: string): Promise<string | null> {
+  const customKey = getCustomKey();
 
   try {
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-    const response = await fetch(endpoint, {
+    const response = await fetch('/api/gemini', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [
-          {
-            role: 'user',
-            parts: [{ text: `${systemPrompt}\n\nUSER PROMPT: ${userPrompt}` }],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 2048,
-        },
+        systemPrompt,
+        userPrompt,
+        customKey,
       }),
     });
 
     if (!response.ok) {
-      console.warn('Gemini API responded with status:', response.status);
+      console.warn('/api/gemini responded with status:', response.status);
       return null;
     }
 
     const data = await response.json();
-    const candidateText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    return candidateText || null;
+    return data.result || null;
   } catch (err) {
-    console.warn('Gemini API call failed, falling back to simulated engine:', err);
+    console.warn('/api/gemini call failed, falling back to simulation engine:', err);
     return null;
   }
 }
@@ -62,7 +52,7 @@ export async function chatWithTimeCompanion(
 You are currently assisting a time traveler exploring the space: "${contextName}" (${contextType}).
 Provide concise, insightful, atmospheric answers (2-4 sentences max). Offer temporal vectors and causal insights.`;
 
-  const geminiText = await callGemini(systemPrompt, userQuery);
+  const geminiText = await callGeminiApi(systemPrompt, userQuery);
   if (geminiText) return geminiText;
 
   // Fallback
@@ -77,7 +67,7 @@ export async function generateAlternateTimelineBranch(
   pivotYear: number
 ): Promise<TimelineBranch> {
   const systemPrompt = `You are the TIMEVERSE AI Causal Branching Engine. Generate a hypothetical alternate timeline based on the user's pivot event prompt and divergence year.
-Return ONLY valid raw JSON with this exact structure (no markdown formatting codeblocks):
+Return ONLY valid raw JSON with this exact structure (no markdown codeblocks):
 {
   "name": "Timeline Name",
   "divergencePoint": "Detailed description of the initial split",
@@ -108,7 +98,7 @@ Return ONLY valid raw JSON with this exact structure (no markdown formatting cod
   ]
 }`;
 
-  const geminiRaw = await callGemini(systemPrompt, `Pivot Event: "${eventPrompt}" in Year ${pivotYear}`);
+  const geminiRaw = await callGeminiApi(systemPrompt, `Pivot Event: "${eventPrompt}" in Year ${pivotYear}`);
 
   if (geminiRaw) {
     try {
@@ -267,7 +257,7 @@ Return ONLY valid raw JSON with this exact structure (no markdown formatting cod
 }`;
 
   const userPrompt = `Simulate ${location} in ${destinationYear}. AI Level: ${aiLevel}, Energy Tech: ${energyTech}`;
-  const geminiRaw = await callGemini(systemPrompt, userPrompt);
+  const geminiRaw = await callGeminiApi(systemPrompt, userPrompt);
 
   if (geminiRaw) {
     try {
@@ -355,7 +345,7 @@ Return ONLY valid raw JSON with this exact structure (no markdown formatting cod
   "longTermConsequences": ["..."]
 }`;
 
-  const geminiRaw = await callGemini(systemPrompt, `Pivot Trigger: "${triggerInput}"`);
+  const geminiRaw = await callGeminiApi(systemPrompt, `Pivot Trigger: "${triggerInput}"`);
 
   if (geminiRaw) {
     try {
@@ -437,7 +427,7 @@ Return ONLY valid raw JSON with this exact structure (no markdown codeblocks):
   "timelineEvents": [{ "year": "Year 0", "title": "Genesis", "detail": "..." }]
 }`;
 
-  const geminiRaw = await callGemini(systemPrompt, `World Prompt: "${prompt}"`);
+  const geminiRaw = await callGeminiApi(systemPrompt, `World Prompt: "${prompt}"`);
 
   if (geminiRaw) {
     try {
